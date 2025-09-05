@@ -1,0 +1,99 @@
+stages:
+  - build
+  - test
+  - deploy-automation
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE/jira-claude-automation:$CI_COMMIT_SHA
+  DOCKER_DRIVER: overlay2
+
+# 🔨 Construction image Docker
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $DOCKER_IMAGE .
+    - docker push $DOCKER_IMAGE
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+# 🧪 Tests (optionnel)
+test:
+  stage: test
+  image: node:18-alpine
+  script:
+    - npm install
+    - npm test
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - changes:
+        - "src/**/*"
+        - "package*.json"
+
+# 🤖 Automatisation des tâches Jira
+run-automation:
+  stage: deploy-automation
+  image: $DOCKER_IMAGE
+  variables:
+    # Jira
+    JIRA_HOST: $JIRA_HOST
+    JIRA_USERNAME: $JIRA_USERNAME
+    JIRA_API_TOKEN: $JIRA_API_TOKEN
+    JIRA_PROJECT_KEY: $JIRA_PROJECT_KEY
+    TARGET_LABELS: $TARGET_LABELS
+    WORKING_DIR: /workspace
+    # Git/GitLab
+    REPOSITORY_URL: $CI_REPOSITORY_URL
+    DEFAULT_BRANCH: $CI_DEFAULT_BRANCH
+    GITLAB_ACCESS_TOKEN: $GITLAB_ACCESS_TOKEN
+    GITLAB_PROJECT_ID: $CI_PROJECT_ID
+    # Teams
+    TEAMS_WEBHOOK_URL: $TEAMS_WEBHOOK_URL
+  script:
+    - echo "🚀 Démarrage automatisation Jira-Claude"
+    - npm start
+  artifacts:
+    when: always
+    paths:
+      - logs/
+      - /workspace/
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $RUN_AUTOMATION == "true"
+      when: manual
+
+# 🧹 Nettoyage
+cleanup:
+  stage: deploy-automation
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker system prune -f
+  when: always
+  allow_failure: true
+
+# 📊 Rapport d'exécution
+generate-report:
+  stage: deploy-automation
+  image: $DOCKER_IMAGE
+  needs: [run-automation]
+  script:
+    - echo "📊 Génération rapport d'exécution"
+    - node -e "console.log('📈 Rapport généré:', new Date().toISOString())"
+  artifacts:
+    paths:
+      - reports/
+    expire_in: 1 month
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"

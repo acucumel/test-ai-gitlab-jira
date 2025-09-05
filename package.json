@@ -1,0 +1,25 @@
+{
+  "name": "jira-claude-automation",
+  "version": "1.0.0",
+  "description": "Automatisation Jira avec Claude Code et notifications Teams",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Tests à implémenter\" && exit 0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "node-jira-client": "^8.2.2",
+    "winston": "^3.11.0",
+    "shelljs": "^0.8.5",
+    "fs-extra": "^11.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["jira", "claude", "automation", "ci-cd", "teams"],
+  "author": "Your Company",
+  "license": "MIT"
+}

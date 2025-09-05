@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  jira-claude-automation:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - ./workspace:/workspace
+      - ./logs:/app/logs
+      - ./src:/app/src
+      - ~/.m2:/root/.m2  # Cache Maven
+    working_dir: /app
+    command: npm run dev
+    environment:
+      - NODE_ENV=development
+      - JAVA_HOME=/usr/lib/jvm/java-11-openjdk
+    networks:
+      - automation-network
+
+  # Base de données (optionnel)
+  database:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: jira_automation
+      POSTGRES_USER: automation
+      POSTGRES_PASSWORD: password123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - automation-network
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
+
+networks:
+  automation-network:
+    driver: bridge
